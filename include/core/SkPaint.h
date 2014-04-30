@@ -18,7 +18,7 @@
 #ifdef SK_BUILD_FOR_ANDROID
 #include "SkPaintOptionsAndroid.h"
 
-#define SKPAINTOPTIONS_OPT
+//#define SKPAINTOPTIONS_OPT
 #ifdef SKPAINTOPTIONS_OPT
 //For testing this optimization ensure you rebuild and push libandroid_runtime.so and libhwui.so
 //everytime you build and push libskia.so

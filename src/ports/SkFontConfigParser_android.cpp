@@ -10,6 +10,7 @@
 #include "SkTypeface.h"
 
 #include <expat.h>
+#include <stdio.h>
 #include <sys/system_properties.h>
 #include <unistd.h>
 
@@ -220,6 +221,7 @@ static void parseConfigFile(const char *filename, SkTDArray<FontFamily*> &famili
         }
         XML_Parse(parser, buffer, len, done);
     }
+    XML_ParserFree(parser);
     fclose(file);
 }
 
@@ -260,6 +262,36 @@ static void getThemeFontFamilies(SkTDArray<FontFamily*> &fontFamilies) {
     parseConfigFile(THEME_FONTS_FILE, fontFamilies);
 }
 
+static bool hasFontFamily(const char* familyName, SkTDArray<FontFamily*> &fontFamilies) {
+    for (int i = 0; i < fontFamilies.count(); i++) {
+        FontFamily* family = fontFamilies[i];
+        for (int j = 0; j < family->fNames.count(); j++) {
+            const char* name = family->fNames[j];
+            if (strcmp(name, familyName) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * Adds missing font families found in system fonts that are not in the theme's fonts
+ */
+static void addSystemFontsToThemeFonts(SkTDArray<FontFamily*> &themeFontFamilies,
+                                       SkTDArray<FontFamily*> &systemFontFamilies) {
+    for (int i = 0; i < systemFontFamilies.count(); i++) {
+        FontFamily* family = systemFontFamilies[i];
+        for (int j = 0; j < family->fNames.count(); j++) {
+            const char* name = family->fNames[j];
+            if (!hasFontFamily(name, themeFontFamilies)) {
+                systemFontFamilies[i]->fIsThemeFallbackFont = true;
+                *themeFontFamilies.append() = systemFontFamilies[i];
+            }
+        }
+    }
+}
+
 /**
  * Loads data on font families from various expected configuration files. The
  * resulting data is returned in the given fontFamilies array.
@@ -274,9 +306,14 @@ void SkFontConfigParser::GetFontFamilies(SkTDArray<FontFamily*> &fontFamilies) {
 
     if (use_theme_font) {
         getThemeFontFamilies(fontFamilies);
+        if (fontFamilies.count() > 0) {
+            SkTDArray<FontFamily*> systemFontFamilies;
+            getSystemFontFamilies(systemFontFamilies);
+            addSystemFontsToThemeFonts(fontFamilies, systemFontFamilies);
+        }
     }
 
-    if (!use_theme_font || fontFamilies.count() ==0) {
+    if (!use_theme_font || fontFamilies.count() == 0) {
         getSystemFontFamilies(fontFamilies);
     }
 

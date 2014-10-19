@@ -48,6 +48,10 @@ ifeq ($(ARCH_ARM_HAVE_NEON),true)
 	LOCAL_CFLAGS += -D__ARM_HAVE_NEON
 endif
 
+# Enable Neon assembler optimized version of S32A_Opaque_BlitRow32 and
+# S32A_Blend_Blitrow32. Overrides the intrinsic blitter below.
+LOCAL_CFLAGS += -DENABLE_OPTIMIZED_S32A_BLITTERS
+
 LOCAL_CFLAGS += -DDCT_IFAST_SUPPORTED
 
 # using freetype's embolden allows us to adjust fake bold settings at
@@ -518,11 +522,13 @@ ifeq ($(TARGET_ARCH),arm)
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
 
 LOCAL_CFLAGS += -DNEON_BLIT_ANTI_H
-ifneq ($(WITH_QC_PERF),true)
+ifneq ($(TARGET_HAVE_QC_PERF),true)
     LOCAL_CFLAGS += -DNEON_BLIT_H
 endif
 
 LOCAL_SRC_FILES += \
+	src/opts/S32A_Opaque_BlitRow32_neon.S \
+	src/opts/S32A_Blend_BlitRow32_neon.S \
 	src/opts/memset16_neon.S \
 	src/opts/memset32_neon.S \
 	src/opts/SkBitmapProcState_arm_neon.cpp \
@@ -558,6 +564,7 @@ endif
 
 LOCAL_SHARED_LIBRARIES := \
 	liblog \
+	libdl \
 	libcutils \
 	libft2 \
 	libjpeg \
@@ -575,7 +582,7 @@ LOCAL_STATIC_LIBRARIES := \
 	libwebp-encode
 
 ifeq ($(call is-vendor-board-platform,QCOM),true)
-ifeq ($(WITH_QC_PERF),true)
+ifeq ($(TARGET_HAVE_QC_PERF),true)
 	LOCAL_WHOLE_STATIC_LIBRARIES += libqc-skia
 endif
 endif
